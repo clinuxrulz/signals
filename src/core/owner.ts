@@ -31,6 +31,7 @@
 import { STATE_CLEAN, STATE_DISPOSED } from "./constants.js";
 import type { Computation } from "./core.js";
 import { ContextNotFoundError, NoOwnerError } from "./error.js";
+import type { Link } from "./r3queue.js";
 import { globalQueue, type IQueue } from "./scheduler.js";
 
 export type ContextRecord = Record<string | symbol, unknown>;
@@ -55,6 +56,16 @@ export function setOwner(owner: Owner | null): Owner | null {
   return out;
 }
 
+/*
+export interface Link {
+  dep: Computation;
+  sub: Computation;
+  nextDep: Link | null;
+  prevSub: Link | null;
+  nextSub: Link | null;
+}
+*/
+
 export class Owner {
   // We flatten the owner tree into a linked list so that we don't need a pointer to .firstChild
   // However, the children are actually added in reverse creation order
@@ -64,6 +75,9 @@ export class Owner {
   _prevSibling: Owner | null = null;
 
   _state: number = STATE_CLEAN;
+  height: number = 0;
+  subs: Link | null = null;
+  subsTail: Link | null = null;
 
   _disposal: Disposable | Disposable[] | null = null;
   _context: ContextRecord = defaultContext;

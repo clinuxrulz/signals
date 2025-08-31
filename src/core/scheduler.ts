@@ -1,7 +1,9 @@
 import { EFFECT_PURE, EFFECT_RENDER, EFFECT_USER } from "./constants.js";
 import type { Computation, ObserverType, SourceType } from "./core.js";
 import type { Effect } from "./effect.js";
-import { LOADING_BIT } from "./flags.js";
+import { IN_FALLBACK_HEAP, IN_FALLBACK_HEAP_BIT, IN_HEAP_BIT, LOADING_BIT, RECOMPUTING_DEPS_BIT } from "./flags.js";
+import type { Owner } from "./owner.js";
+import { R3Queue } from "./r3queue.js";
 
 export let clock = 0;
 export function incrementClock(): void {
@@ -28,7 +30,7 @@ function notifyUnobserved(): void {
 
 export type QueueCallback = (type: number) => void;
 export interface IQueue {
-  enqueue(type: number, fn: QueueCallback): void;
+  enqueue(type: number, computation: Computation, fn: QueueCallback): void;
   run(type: number): boolean | void;
   flush(): void;
   addChild(child: IQueue): void;
@@ -38,23 +40,22 @@ export interface IQueue {
   _parent: IQueue | null;
 }
 
-let pureQueue: QueueCallback[] = [];
 export class Queue implements IQueue {
   _parent: IQueue | null = null;
   _running: boolean = false;
   _queues: [QueueCallback[], QueueCallback[]] = [[], []];
+  _pureQueue: R3Queue = new R3Queue();
   _children: IQueue[] = [];
   created = clock;
-  enqueue(type: number, fn: QueueCallback): void {
-    if (ActiveTransition) return ActiveTransition.enqueue(type, fn);
-    pureQueue.push(fn);
+  enqueue(type: number, computation: Computation, fn: QueueCallback): void {
+    if (ActiveTransition) return ActiveTransition.enqueue(type, computation, fn);
+    this._pureQueue.insertIntoHeap(computation, () => fn(EFFECT_PURE));
     if (type) this._queues[type - 1].push(fn);
     schedule();
   }
   run(type: number) {
     if (type === EFFECT_PURE) {
-      pureQueue.length && runQueue(pureQueue, type);
-      pureQueue = [];
+      this._pureQueue.stabilize();
       return;
     } else if (this._queues[type - 1].length) {
       const effects = this._queues[type - 1];
@@ -118,21 +119,20 @@ export class Transition implements IQueue {
   _optimistic: Set<Computation & { _reset: () => void }> = new Set();
   _done: boolean = false;
   _queues: [QueueCallback[], QueueCallback[]] = [[], []];
-  _pureQueue: QueueCallback[] = [];
+  _pureQueue: R3Queue = new R3Queue();
   _children: IQueue[] = [];
   _parent: IQueue | null = null;
   _running: boolean = false;
   _scheduled: boolean = false;
   created: number = clock;
-  enqueue(type: number, fn: QueueCallback): void {
-    this._pureQueue.push(fn);
+  enqueue(type: number, computation: Computation, fn: QueueCallback): void {
+    this._pureQueue.insertIntoHeap(computation, () => fn(EFFECT_PURE));
     if (type) this._queues[type - 1].push(fn);
     this.schedule();
   }
   run(type: number) {
     if (type === EFFECT_PURE) {
-      this._pureQueue.length && runQueue(this._pureQueue, type);
-      this._pureQueue = [];
+      this._pureQueue.stabilize();
       return;
     } else if (this._queues[type - 1].length) {
       const effects = this._queues[type - 1];
@@ -229,7 +229,17 @@ export function cloneGraph(node: Computation): Computation {
       ActiveTransition!._pendingNodes.forEach(n => node._transition!._pendingNodes.add(n));
       ActiveTransition!._queues[0].forEach(f => node._transition!._queues[0].push(f));
       ActiveTransition!._queues[1].forEach(f => node._transition!._queues[1].push(f));
-      ActiveTransition!._pureQueue.forEach(f => node._transition!._pureQueue.push(f));
+      {
+        let queue = node._transition!._pureQueue;
+        for (let i = 0; i < queue.maxDirty; ++i) {
+          let el = queue.dirtyHeap[i];
+          while (el !== undefined) {
+            let update = queue.computationUpdateMap.get(el)!;
+            ActiveTransition!._pureQueue.insertIntoHeap(el, update);
+            el = el.nextHeap;
+          }
+        }
+      }
       ActiveTransition!._children.forEach(c => node._transition!.addChild(c));
       ActiveTransition = node._transition;
     }

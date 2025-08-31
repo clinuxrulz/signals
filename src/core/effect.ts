@@ -45,7 +45,7 @@ export class Effect<T = any> extends Computation<T> {
     this._updateIfNecessary();
     !options?.defer &&
       (this._type === EFFECT_USER
-        ? (ActiveTransition || this._queue).enqueue(this._type, this._run.bind(this))
+        ? (ActiveTransition || this._queue).enqueue(this._type, this, this._run.bind(this))
         : this._run(this._type));
     if (__DEV__ && !this._parent)
       console.warn("Effects created outside a reactive context will never be disposed");
@@ -71,7 +71,7 @@ export class Effect<T = any> extends Computation<T> {
     }
     if (this._state >= state || skipQueue) return;
 
-    if (this._state === STATE_CLEAN) (ActiveTransition || this._queue).enqueue(this._type, this._run.bind(this));
+    if (this._state === STATE_CLEAN) (ActiveTransition || this._queue).enqueue(this._type, this, this._run.bind(this));
 
     this._state = state;
   }
@@ -140,7 +140,7 @@ export class EagerComputation<T = any> extends Computation<T> {
       !skipQueue &&
       (this._state === STATE_CLEAN || (this._state === STATE_CHECK && this._forceNotify))
     )
-      (ActiveTransition || this._queue).enqueue(EFFECT_PURE, this._run.bind(this));
+      (ActiveTransition || this._queue).enqueue(EFFECT_PURE, this, this._run.bind(this));
 
     super._notify(state, skipQueue);
   }
@@ -167,7 +167,7 @@ export class FirewallComputation extends Computation {
       !skipQueue &&
       (this._state === STATE_CLEAN || (this._state === STATE_CHECK && this._forceNotify))
     )
-      (ActiveTransition || this._queue).enqueue(EFFECT_PURE, this._run.bind(this));
+      (ActiveTransition || this._queue).enqueue(EFFECT_PURE, this, this._run.bind(this));
 
     super._notify(state, true);
     this._forceNotify = !!skipQueue; // they don't need to be forced themselves unless from above

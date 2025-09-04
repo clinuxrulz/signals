@@ -31,7 +31,7 @@ import { STATE_CHECK, STATE_CLEAN, STATE_DIRTY, STATE_DISPOSED } from "./constan
 import { NotReadyError } from "./error.js";
 import { DEFAULT_FLAGS, ERROR_BIT, LOADING_BIT, UNINITIALIZED_BIT, type Flags } from "./flags.js";
 import { getOwner, Owner, setOwner } from "./owner.js";
-import type { Link } from "./r3queue.js";
+import { link, type Link } from "./r3queue.js";
 import { clock, ActiveTransition, cloneGraph, removeSourceObservers, type Transition } from "./scheduler.js";
 
 export interface SignalOptions<T> {
@@ -135,6 +135,13 @@ export class Computation<T = any> extends Owner implements SourceType, ObserverT
     if (options?.equals !== undefined) this._equals = options.equals;
     if (options?.pureWrite) this._pureWrite = true;
     if (options?.unobserved) this._unobserved = options?.unobserved;
+
+    if (this._parent != null) {
+      this.height = this._parent.height + 1;
+      if (this._parent instanceof Computation) {
+        link(this, this._parent);
+      }
+    }
 
     if (ActiveTransition) {
       this._transition = ActiveTransition;

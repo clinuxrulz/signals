@@ -262,7 +262,7 @@ function runDisposal(node: Computation): void {
 }
 
 // https://github.com/stackblitz/alien-signals/blob/v2.0.3/src/system.ts#L52
-function link(
+export function link(
   dep: Computation,
   sub: Computation,
 ) {

@@ -29,7 +29,7 @@
 
 import { STATE_CHECK, STATE_CLEAN, STATE_DIRTY, STATE_DISPOSED } from "./constants.js";
 import { NotReadyError } from "./error.js";
-import { DEFAULT_FLAGS, ERROR_BIT, LOADING_BIT, UNINITIALIZED_BIT, type Flags } from "./flags.js";
+import { DEFAULT_FLAGS, DIRTY_BIT, ERROR_BIT, LOADING_BIT, UNINITIALIZED_BIT, type Flags } from "./flags.js";
 import { getOwner, Owner, setOwner } from "./owner.js";
 import { link, type Link } from "./r3queue.js";
 import { clock, ActiveTransition, cloneGraph, removeSourceObservers, type Transition } from "./scheduler.js";
@@ -103,7 +103,7 @@ export class Computation<T = any> extends Owner implements SourceType, ObserverT
   _pureWrite: boolean = false;
 
   /** Whether the computation is an error or has ancestors that are unresolved */
-  _stateFlags = 0;
+  _stateFlags = DIRTY_BIT;
 
   /** Which flags raised by sources are handled, vs. being passed through. */
   _handlerMask = DEFAULT_FLAGS;

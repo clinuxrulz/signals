@@ -86,7 +86,6 @@ export class R3Queue {
   }
 
   deleteFromHeap(n: Computation) {
-    this.computationUpdateMap.delete(n);
     //
     const nodeFlags = n._stateFlags;
     if (!(nodeFlags & IN_HEAP_BIT)) return;

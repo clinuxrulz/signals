@@ -10,7 +10,7 @@ import {
 import { Computation, latest, UNCHANGED, type SignalOptions } from "./core.js";
 import { ERROR_BIT, LOADING_BIT } from "./flags.js";
 import type { Owner } from "./owner.js";
-import { clock, ActiveTransition } from "./scheduler.js";
+import { clock, ActiveTransition, globalQueue } from "./scheduler.js";
 
 /**
  * Effects are the leaf nodes of our reactive graph. When their sources change, they are
@@ -126,6 +126,11 @@ export class EagerComputation<T = any> extends Computation<T> {
   constructor(initialValue: T, compute: () => T, options?: SignalOptions<T> & { defer?: boolean }) {
     super(initialValue, compute, options);
     !options?.defer && this._updateIfNecessary();
+    if (ActiveTransition !== null) {
+      ActiveTransition._pureQueue.insertIntoHeap(this, () => this._run());
+    } else {
+      globalQueue._pureQueue.insertIntoHeap(this, () => this._run());
+    }
     if (__DEV__ && !this._parent)
       console.warn("Eager Computations created outside a reactive context will never be disposed");
   }

@@ -183,7 +183,14 @@ export class R3Queue {
       }
     }
 
-    if (value !== oldValue) {
+    let isEqual: boolean;
+    if (el._equals == false) {
+      isEqual = false;
+    } else {
+      isEqual = el._equals(oldValue, value);
+    }
+
+    if (!isEqual) {
       /*
       if (didNotError) {
         el.value = value;

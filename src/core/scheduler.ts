@@ -30,7 +30,7 @@ function notifyUnobserved(): void {
 
 export type QueueCallback = (type: number) => void;
 export interface IQueue {
-  enqueue(type: number, computation: Computation, fn: QueueCallback): void;
+  enqueue(type: number, computation: Computation, fn: QueueCallback, skipPureQueue?: boolean): void;
   run(type: number): boolean | void;
   flush(): void;
   addChild(child: IQueue): void;
@@ -47,9 +47,11 @@ export class Queue implements IQueue {
   _pureQueue: R3Queue = new R3Queue();
   _children: IQueue[] = [];
   created = clock;
-  enqueue(type: number, computation: Computation, fn: QueueCallback): void {
-    if (ActiveTransition) return ActiveTransition.enqueue(type, computation, fn);
-    this._pureQueue.insertIntoHeap(computation, () => fn(EFFECT_PURE));
+  enqueue(type: number, computation: Computation, fn: QueueCallback, skipPureQueue?: boolean): void {
+    if (ActiveTransition) return ActiveTransition.enqueue(type, computation, fn, skipPureQueue);
+    if (!skipPureQueue) {
+      this._pureQueue.insertIntoHeap(computation, () => fn(EFFECT_PURE));
+    }
     if (type) this._queues[type - 1].push(fn);
     schedule();
   }
@@ -125,8 +127,10 @@ export class Transition implements IQueue {
   _running: boolean = false;
   _scheduled: boolean = false;
   created: number = clock;
-  enqueue(type: number, computation: Computation, fn: QueueCallback): void {
-    this._pureQueue.insertIntoHeap(computation, () => fn(EFFECT_PURE));
+  enqueue(type: number, computation: Computation, fn: QueueCallback, skipPureQueue?: boolean): void {
+    if (!skipPureQueue) {
+      this._pureQueue.insertIntoHeap(computation, () => fn(EFFECT_PURE));
+    }
     if (type) this._queues[type - 1].push(fn);
     this.schedule();
   }

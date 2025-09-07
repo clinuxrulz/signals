@@ -45,7 +45,7 @@ export class Effect<T = any> extends Computation<T> {
     this._updateIfNecessary();
     !options?.defer &&
       (this._type === EFFECT_USER
-        ? (ActiveTransition || this._queue).enqueue(this._type, this, this._run.bind(this))
+        ? (ActiveTransition || this._queue).enqueue(this._type, this, this._run.bind(this), true)
         : this._run(this._type));
     if (__DEV__ && !this._parent)
       console.warn("Effects created outside a reactive context will never be disposed");

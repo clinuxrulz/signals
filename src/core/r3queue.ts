@@ -31,7 +31,7 @@ export class R3Queue {
   insertIntoHeap(n: Computation, update: () => void) {
     this.computationUpdateMap.set(n, update);
     //
-    let flags = n._stateFlags;
+    let flags = n.r3Flags;
     if (flags & (IN_HEAP_BIT | RECOMPUTING_DEPS_BIT)) return;
     if (flags & IN_FALLBACK_HEAP_BIT) {
       // flags ^= IN_FALLBACK_HEAP_BIT;
@@ -52,7 +52,7 @@ export class R3Queue {
       n.nextHeap = undefined;
     }
     this.heapSize++;
-    n._stateFlags = flags | IN_HEAP_BIT;
+    n.r3Flags = flags | IN_HEAP_BIT;
     const height = n.height;
     const heapAtHeight = this.dirtyHeap[height];
     if (heapAtHeight === undefined) {
@@ -71,10 +71,10 @@ export class R3Queue {
   }
 
   moveToFallbackHeap(n: Computation) {
-    const flags = n._stateFlags;
+    const flags = n.r3Flags;
     if (flags & IN_FALLBACK_HEAP_BIT) return;
     this.deleteFromHeap(n);
-    n._stateFlags |= IN_FALLBACK_HEAP_BIT;
+    n.r3Flags |= IN_FALLBACK_HEAP_BIT;
     if (this.fallbackHeap === undefined) {
       this.fallbackHeap = n;
     } else {
@@ -87,10 +87,10 @@ export class R3Queue {
 
   deleteFromHeap(n: Computation) {
     //
-    const nodeFlags = n._stateFlags;
+    const nodeFlags = n.r3Flags;
     if (!(nodeFlags & IN_HEAP_BIT)) return;
     this.heapSize--;
-    n._stateFlags = nodeFlags & ~IN_HEAP_BIT;
+    n.r3Flags = nodeFlags & ~IN_HEAP_BIT;
     const height = n.height;
     if (n.prevHeap === n) {
       this.dirtyHeap[height] = undefined;
@@ -111,7 +111,7 @@ export class R3Queue {
 
   clearFallbackHeap() {
     while (this.fallbackHeap !== undefined) {
-      this.fallbackHeap._stateFlags ^= IN_FALLBACK_HEAP_BIT;
+      this.fallbackHeap.r3Flags ^= IN_FALLBACK_HEAP_BIT;
       const prevFallbackHeap = this.fallbackHeap;
       this.fallbackHeap = this.fallbackHeap.nextHeap;
       prevFallbackHeap.prevHeap = prevFallbackHeap;
@@ -144,7 +144,7 @@ export class R3Queue {
     this.contextHeight = el._parent ? el._parent.height + 1 : 0;
     setOwner(el);
     el.depsTail = null;
-    el._stateFlags |= RECOMPUTING_DEPS_BIT;
+    el.r3Flags |= RECOMPUTING_DEPS_BIT;
     let didNotError = true;
     let oldValue;
     let value;
@@ -157,7 +157,7 @@ export class R3Queue {
       didNotError = false;
     }
     if (el.height < this.contextHeight) {
-      if (el._stateFlags & IN_HEAP_BIT) {
+      if (el.r3Flags & IN_HEAP_BIT) {
         this.deleteFromHeap(el);
         el.height = this.contextHeight;
         this.insertIntoHeap(el, fn);
@@ -165,7 +165,7 @@ export class R3Queue {
         el.height = this.contextHeight;
       }
     }
-    el._stateFlags &= IN_HEAP_BIT | IN_FALLBACK_HEAP_BIT;
+    el.r3Flags &= IN_HEAP_BIT | IN_FALLBACK_HEAP_BIT;
     setOwner(oldContext);
     this.contextHeight = oldWorkingHeight;
 
@@ -277,7 +277,7 @@ export function link(
     return;
   }
   let nextDep: Link | null = null;
-  const isRecomputing = sub._stateFlags & RECOMPUTING_DEPS_BIT;
+  const isRecomputing = sub.r3Flags & RECOMPUTING_DEPS_BIT;
   if (isRecomputing) {
     nextDep = prevDep !== null ? prevDep.nextDep : sub.deps;
     if (nextDep !== null && nextDep.dep === dep) {

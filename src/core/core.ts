@@ -92,6 +92,7 @@ export class Computation<T = any> extends Owner implements SourceType, ObserverT
   depsTail: Link | null = null;
   prevHeap: Computation = this;
   nextHeap: Computation | undefined;
+  r3Flags = DIRTY_BIT;
 
   // Used in __DEV__ mode, hopefully removed in production
   _name: string | undefined;
@@ -103,7 +104,7 @@ export class Computation<T = any> extends Owner implements SourceType, ObserverT
   _pureWrite: boolean = false;
 
   /** Whether the computation is an error or has ancestors that are unresolved */
-  _stateFlags = DIRTY_BIT;
+  _stateFlags = 0;
 
   /** Which flags raised by sources are handled, vs. being passed through. */
   _handlerMask = DEFAULT_FLAGS;

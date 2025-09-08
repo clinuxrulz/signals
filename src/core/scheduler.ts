@@ -1,8 +1,7 @@
 import { EFFECT_PURE, EFFECT_RENDER, EFFECT_USER } from "./constants.js";
 import type { Computation, ObserverType, SourceType } from "./core.js";
 import type { Effect } from "./effect.js";
-import { IN_FALLBACK_HEAP, IN_FALLBACK_HEAP_BIT, IN_HEAP_BIT, LOADING_BIT, RECOMPUTING_DEPS_BIT } from "./flags.js";
-import type { Owner } from "./owner.js";
+import { LOADING_BIT } from "./flags.js";
 import { R3Queue } from "./r3queue.js";
 
 export let clock = 0;
